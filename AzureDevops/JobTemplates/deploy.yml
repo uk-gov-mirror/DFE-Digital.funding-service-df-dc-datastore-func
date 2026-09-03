@@ -1,0 +1,33 @@
+﻿parameters:
+- name: AzureServiceConnection
+  type: string
+- name: Environment
+  type: string
+
+jobs:
+- deployment: DeployTo${{ parameters.Environment }}
+  displayName: "Deploy To ${{ parameters.Environment }}"
+  environment: Doc Capture - ${{ parameters.Environment }}
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - task: AzureResourceManagerTemplateDeployment@3
+          displayName: 'Deploy arm template'
+          inputs:
+            azureResourceManagerConnection: '${{ parameters.AzureServiceConnection }}'
+            subscriptionId: '$(AzureSubscription)'
+            resourceGroupName: '$(SharedResourceGroupName)'
+            location: 'UK South'
+            csmFile: '$(Pipeline.Workspace)/DocCapture.ArmTemplates.DataStoreFunc/template.json'
+            deploymentName: 'data-store-func-app'
+            overrideParameters: '-environmentTag "$(EnvironmentTag)" -parentBusinessTag "$(ParentBusinessTag)" -portfolioTag "$(PortfolioTag)" -productTag "$(ProductTag)" -serviceLineTag "$(ServiceLineTag)" -serviceTag "$(ServiceTag)" -serviceOfferingTag "$(ServiceOfferingTag)" -sharedVirtualNetworkName "$(SharedVirtualNetworkName)" -sharedSubnetName "$(SharedSubnetName)" -sharedLogAnalyticsName "$(SharedLogAnalyticsName)" -sharedAppInsightsName "$(SharedAppInsightsName)" -sharedKeyVaultName "$(SharedKeyVaultName)" -linuxAppServicePlanName "$(LinuxAppServicePlanName)" -functionAppNameLinux "$(linuxFileDetailsFunctionAppName)"'
+
+        - task: AzureRMWebAppDeployment@4
+          displayName: Deploy function app
+          inputs:
+            appType: 'webApp'
+            WebAppName: '$(LinuxFileDetailsFunctionAppName)'
+            ConnectedServiceName: '${{ parameters.AzureServiceConnection }}'
+            Package: '$(Pipeline.Workspace)/DocCapture.DataStoreFunc/publish.zip'
+
